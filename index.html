@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1012">
+<title>Время — UTC → МСК · НСК</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{
+    --bg:#0f1012;
+    --ink:#e8eaed;
+    --muted:#6b7078;
+    --line:#232529;
+    --accent:#ff6f00;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    min-height:100svh;
+  }
+  .wrap{
+    margin:auto;
+    width:min(920px,100%);
+    padding:48px 28px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px;
+    margin-bottom:8px;
+  }
+  h1{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .now-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--muted);
+    font:inherit;
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    padding:8px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:color .25s,border-color .25s;
+  }
+  .now-btn:hover{color:var(--ink);border-color:var(--muted)}
+  .now-btn.live{color:var(--accent);border-color:var(--accent)}
+
+  /* --- выбор UTC --- */
+  .picker{
+    padding:44px 0 38px;
+    border-bottom:1px solid var(--line);
+    opacity:0;
+    transform:translateY(14px);
+    animation:rise .9s cubic-bezier(.39,.575,.565,1) forwards;
+  }
+  .picker .label{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .picker .label .dot{
+    display:inline-block;
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    margin-right:10px;
+    vertical-align:1px;
+    animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .picker .sub{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:12px}
+  input[type="time"]{
+    background:none;
+    border:none;
+    color:var(--ink);
+    font:inherit;
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum";
+    font-weight:600;
+    font-size:clamp(56px,12vw,108px);
+    line-height:1;
+    letter-spacing:-.015em;
+    width:100%;
+    outline:none;
+    padding:0;
+    color-scheme:dark;
+  }
+  input[type="time"]::-webkit-calendar-picker-indicator{
+    filter:invert(.55);
+    cursor:pointer;
+  }
+
+  /* --- результаты --- */
+  .zone{
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:end;
+    gap:12px;
+    padding:34px 0;
+    border-bottom:1px solid var(--line);
+    opacity:0;
+    transform:translateY(14px);
+    animation:rise .9s cubic-bezier(.39,.575,.565,1) forwards;
+    animation-delay:.12s;
+  }
+  .zone + .zone{animation-delay:.2s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  .name{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  .sub{font-size:13px;color:var(--muted);letter-spacing:.04em}
+  .time{
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum";
+    font-weight:600;
+    font-size:clamp(56px,12vw,108px);
+    line-height:.95;
+    letter-spacing:-.015em;
+  }
+  .time .sec{
+    font-size:.34em;
+    font-weight:500;
+    color:var(--muted);
+    margin-left:.18em;
+    transition:opacity .12s linear;
+  }
+  .time .sec.tick{opacity:.35}
+  footer{
+    padding-top:22px;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.05em;
+    display:flex;
+    justify-content:space-between;
+  }
+  @media (max-width:560px){
+    .zone{grid-template-columns:1fr;gap:6px;align-items:start}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>UTC → МСК · НСК</h1>
+    <button class="now-btn live" id="nowBtn">Сейчас</button>
+  </header>
+
+  <section class="picker">
+    <div class="label"><span class="dot"></span>Время по UTC</div>
+    <input type="time" id="utcInput" value="12:00">
+    <div class="sub" id="utcNote">Текущее время — обновляется каждую секунду</div>
+  </section>
+
+  <section class="zone">
+    <div>
+      <div class="name">Москва</div>
+      <div class="sub">MSK · UTC+3</div>
+    </div>
+    <div class="time" id="msk">--:--<span class="sec">--</span></div>
+  </section>
+
+  <section class="zone">
+    <div>
+      <div class="name">Новосибирск</div>
+      <div class="sub">NSK · UTC+7</div>
+    </div>
+    <div class="time" id="nsk">--:--<span class="sec">--</span></div>
+  </section>
+
+  <footer>
+    <span>НСК = МСК +4 ч</span>
+    <span>работает офлайн</span>
+  </footer>
+</main>
+
+<script>
+const input  = document.getElementById("utcInput");
+const note   = document.getElementById("utcNote");
+const nowBtn = document.getElementById("nowBtn");
+const mskEl  = document.getElementById("msk");
+const nskEl  = document.getElementById("nsk");
+
+let live = true;          // режим «сейчас»
+let manualSec = 12*3600;  // выбранное вручную UTC-время в секундах суток
+
+const pad = n => String(n).padStart(2, "0");
+
+function buildTime(el){
+  el.textContent = "--:--";
+  const sp = document.createElement("span");
+  sp.className = "sec"; sp.textContent = "--";
+  el.appendChild(sp);
+}
+[mskEl, nskEl].forEach(buildTime);
+
+function setTime(el, totalSec, withSec){
+  const h = Math.floor(totalSec / 3600) % 24;
+  const m = Math.floor(totalSec / 60) % 60;
+  const s = Math.floor(totalSec % 60);
+  el.firstChild.nodeValue = `${pad(h)}:${pad(m)}`;
+  const secEl = el.querySelector(".sec");
+  secEl.textContent = pad(s);
+  if (withSec) secEl.classList.toggle("tick", s % 2 === 1);
+  else secEl.classList.remove("tick");
+}
+
+function render(){
+  if (live) {
+    const now = new Date();
+    const utcSec = now.getUTCHours()*3600 + now.getUTCMinutes()*60 + now.getUTCSeconds();
+    manualSec = utcSec;
+    input.value = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}`;
+    setTime(mskEl, utcSec + 3*3600, true);
+    setTime(nskEl, utcSec + 7*3600, true);
+    note.textContent = "Текущее время — обновляется каждую секунду";
+  } else {
+    setTime(mskEl, manualSec + 3*3600, false);
+    setTime(nskEl, manualSec + 7*3600, false);
+    note.textContent = "Выбрано вручную — нажми «Сейчас», чтобы вернуться к текущему";
+  }
+  setTimeout(render, live ? (1000 - Date.now() % 1000 + 10) : 250);
+}
+
+input.addEventListener("input", () => {
+  if (!input.value) return;
+  const [h, m] = input.value.split(":").map(Number);
+  manualSec = h*3600 + m*60;
+  live = false;
+  nowBtn.classList.remove("live");
+  render();
+});
+
+nowBtn.addEventListener("click", () => {
+  live = true;
+  nowBtn.classList.add("live");
+  render();
+});
+
+render();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
